@@ -1,0 +1,88 @@
+# XcodeGen spec. On the Mac: brew install xcodegen && xcodegen generate
+# Bundle id comes from env BUNDLE_ID (set by the CI workflow from your provisioning profile).
+name: DoorApp
+options:
+  bundleIdPrefix: com.andreas
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_REQUIRED: NO
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: NO
+
+targets:
+  DoorApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - DoorApp
+      - Shared/Core
+      - Shared/Intents
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ${BUNDLE_ID}
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: DoorApp/Info.plist
+      properties:
+        CFBundleDisplayName: Door
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: Talk to visitors at your door.
+        NSCameraUsageDescription: Scan the QR code to set up your doorbell.
+        NSFaceIDUsageDescription: Confirm before opening the door.
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [doorapp]
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    dependencies:
+      - target: DoorWidgets
+      - target: DoorWatch
+
+  DoorWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - DoorWidgets
+      - Shared/Core
+      - Shared/Intents
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ${BUNDLE_ID}.widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: DoorWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Door Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  DoorWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - DoorWatch
+      - Shared/Core
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ${BUNDLE_ID}.watchkitapp
+    info:
+      path: DoorWatch/Info.plist
+      properties:
+        CFBundleDisplayName: Door
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: ${BUNDLE_ID}
