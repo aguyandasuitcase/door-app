@@ -5,7 +5,7 @@ on:
     inputs:
       bundle_id:
         description: "Base bundle id (must fit your profile, e.g. com.yourprefix.door)"
-        default: "com.andreas.door"
+        default: "com.doorapp.home"
 
 permissions:
   contents: write

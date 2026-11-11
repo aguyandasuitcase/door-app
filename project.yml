@@ -2,7 +2,7 @@
 # Bundle id comes from env BUNDLE_ID (set by the CI workflow from your provisioning profile).
 name: DoorApp
 options:
-  bundleIdPrefix: com.andreas
+  bundleIdPrefix: com.doorapp
   createIntermediateGroups: true
 settings:
   base:
