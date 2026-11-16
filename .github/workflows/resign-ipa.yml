@@ -34,6 +34,7 @@ jobs:
 
       - name: Ad-hoc sign (no identity, no team)
         run: |
+          for F in "$APP"/Frameworks/*.framework "$APP"/Frameworks/*.dylib; do [ -e "$F" ] && codesign --force --sign - --timestamp=none "$F"; done
           # --deep does not reach Watch/, so sign each nested app first, then the main app
           for W in "$APP"/Watch/*.app; do codesign --force --deep --sign - --timestamp=none "$W"; done
           for X in "$APP"/PlugIns/*.appex; do codesign --force --deep --sign - --timestamp=none "$X"; done
