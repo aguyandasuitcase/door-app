@@ -7,6 +7,8 @@ struct SettingsView: View {
     @AppStorage("holdToOpen") private var holdToOpen = true
     @AppStorage("saveSnapshots") private var saveSnapshots = true
     @AppStorage("notifyMissed") private var notifyMissed = true
+    @AppStorage("keepAlive") private var keepAlive = false
+    @ObservedObject private var alive = KeepAlive.shared
 
     var body: some View {
         NavigationStack {
@@ -42,6 +44,14 @@ struct SettingsView: View {
                     }
                     Button("Send test ring in 5 seconds") {
                         NotificationManager.shared.postRing(station: store.selectedStation.name, after: 5)
+                    }
+                    Toggle("Keep running in background", isOn: Binding(
+                        get: { keepAlive },
+                        set: { keepAlive = $0; KeepAlive.shared.setEnabled($0) }))
+                    if keepAlive && alive.status != .authorizedAlways {
+                        Text("Choose Always for location when iOS asks, otherwise the app can still be stopped. Your position is never used.")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
                     }
                     Text("Lock the phone after tapping to see how a ring looks. These are local notifications, so a real ring while the app is closed needs the SIP connection or a push relay.")
                         .font(.footnote)

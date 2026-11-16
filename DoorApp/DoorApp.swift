@@ -8,6 +8,7 @@ struct DoorApp: App {
 
     init() {
         NotificationManager.shared.setUp()
+        KeepAlive.shared.resumeIfWanted()
     }
 
     var body: some Scene {

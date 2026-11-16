@@ -36,6 +36,9 @@ targets:
         NSCameraUsageDescription: Scan the QR code to set up your doorbell.
         NSFaceIDUsageDescription: Confirm before opening the door.
         NSSupportsLiveActivities: true
+        UIBackgroundModes: [location]
+        NSLocationWhenInUseUsageDescription: Keeps the app running in the background so the door can ring on your phone. Your position is never stored or sent.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Keeps the app running in the background so the door can ring on your phone. Your position is never stored or sent.
         CFBundleURLTypes:
           - CFBundleURLSchemes: [doorapp]
         UISupportedInterfaceOrientations:
