@@ -40,6 +40,11 @@ struct ConnectionTestView: View {
                         Button("Dial") { sip.dial(target: manual, bell: bell) }
                     }
                 }
+                if let bell = doorbells.active, let st = bell.stations.first(where: \.enabled) {
+                    Button("Try all number formats for \(st.name)") {
+                        Task { await sip.probe(station: st, bell: bell) }
+                    }
+                }
                 Button("Hang up", role: .destructive) { sip.hangUp() }
             } header: {
                 Text("Test call")

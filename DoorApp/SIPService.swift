@@ -18,6 +18,7 @@ final class SIPService: ObservableObject {
 
     private var core: Core?
     private var delegate: CoreDelegateStub?
+    private var logDelegate: LoggingServiceDelegateStub?
     private var incomingCall: Call?
     private weak var videoView: UIView?
 
@@ -47,6 +48,15 @@ final class SIPService: ObservableObject {
 
     private func ensureCore() throws -> Core {
         if let core { return core }
+        let ls = LoggingService.Instance
+        ls.logLevel = LogLevel.Message
+        logDelegate = LoggingServiceDelegateStub(onLogMessageWritten: { [weak self] (_: LoggingService, _: String, _: LogLevel, message: String) in
+            let lines = message.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            let sip = lines.filter { $0.hasPrefix("SIP/2.0") || ($0.contains(" SIP/2.0") && !$0.hasPrefix("Via")) }
+            guard !sip.isEmpty else { return }
+            Task { @MainActor in for l in sip { self?.addLog("SIP: " + String(l.prefix(110))) } }
+        })
+        ls.addDelegate(delegate: logDelegate!)
         let core = try Factory.Instance.createCore(configPath: "", factoryConfigPath: "", systemContext: nil)
         core.videoCaptureEnabled = false
         core.videoDisplayEnabled = true
@@ -140,6 +150,30 @@ final class SIPService: ObservableObject {
         }
     }
 
+
+    /// Tries several number formats for one station, a few seconds each, and logs what the server says.
+    func probe(station: DoorbellStation, bell: Doorbell) async {
+        let i = station.index
+        let h = station.code.replacingOccurrences(of: "0x", with: "")
+        let pad = String(format: "%02d", i)
+        let dec = Int(h, radix: 16).map(String.init) ?? h
+        let candidates = [h, String(i), dec, "0099" + "0000" + pad, "00990000" + pad,
+                          bell.homeID + String(i), bell.homeID + h, String(bell.homeID.prefix(10)) + pad, "DS\(i)"]
+        addLog("Probe: trying \(candidates.count) formats for \(station.name)")
+        for target in candidates {
+            hangUp()
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            dial(target: target, bell: bell)
+            for _ in 0..<12 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if callActive { addLog("Probe: \(target) CONNECTED. Use this format."); return }
+            }
+            addLog("Probe: \(target) no luck")
+        }
+        hangUp()
+        addLog("Probe: finished, nothing connected")
+    }
+
     func hangUp() {
         guard let core else { return }
         try? core.currentCall?.terminate()
@@ -170,6 +204,9 @@ final class SIPService: ObservableObject {
 
     private func callChanged(_ call: Call, _ state: Call.State, _ message: String) {
         addLog("Call \(state): \(message)")
+        if state == .Error || state == .End, let info = call.errorInfo, info.protocolCode != 0 {
+            addLog("Reason: \(info.protocolCode) \(info.phrase ?? "")")
+        }
         switch state {
         case .IncomingReceived:
             incomingCall = call
@@ -248,6 +285,7 @@ final class SIPService: ObservableObject {
     func target(for station: DoorbellStation, bell: Doorbell) -> String { "" }
     func startLive(station: DoorbellStation, bell: Doorbell) { addLog("SIP library not included in this build") }
     func dial(target: String, bell: Doorbell) { addLog("SIP library not included in this build") }
+    func probe(station: DoorbellStation, bell: Doorbell) async {}
     func hangUp() {}
     func answer() {}
     func decline() {}
