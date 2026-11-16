@@ -8,13 +8,13 @@ DIR="$HOME/actions-runner-door"
 
 echo "== Looking for Xcode"
 # Finds Xcode on any disk, including external drives, and picks the newest.
-CANDIDATES=$(mdfind "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'" 2>/dev/null; ls -d /Applications/Xcode*.app /Volumes/*/Applications/Xcode*.app /Volumes/*/Xcode*.app 2>/dev/null)
+CANDIDATES=$( { mdfind "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'" 2>/dev/null; ls -d /Applications/Xcode*.app 2>/dev/null; find /Volumes -maxdepth 3 -name "Xcode*.app" -prune 2>/dev/null; } || true )
 BEST=""; BESTV="0"
 while IFS= read -r app; do
   [ -d "$app/Contents/Developer" ] || continue
   v=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist" 2>/dev/null || echo 0)
   if [ "$(printf '%s\n%s\n' "$BESTV" "$v" | sort -V | tail -1)" = "$v" ]; then BEST="$app"; BESTV="$v"; fi
-done < <(echo "$CANDIDATES" | sort -u)
+done < <(echo "$CANDIDATES" | sort -u || true)
 if [ -z "$BEST" ]; then
   echo "No Xcode found. If it is on an external disk, make sure the disk is connected, then run this again."; exit 1
 fi
