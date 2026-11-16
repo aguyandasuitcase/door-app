@@ -51,6 +51,7 @@ struct VisitorRow: View {
 struct HistoryView: View {
     @EnvironmentObject private var store: DoorStore
     @State private var filter: Filter = .all
+    @State private var confirmClear = false
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "All", opened = "Opened", missed = "Missed"
@@ -80,6 +81,16 @@ struct HistoryView: View {
             }
             .background(AppBackground())
             .navigationTitle("History")
+            .toolbar {
+                Button(role: .destructive) { confirmClear = true } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(store.visitors.isEmpty)
+                .accessibilityLabel("Clear history")
+            }
+            .confirmationDialog("Clear all history?", isPresented: $confirmClear, titleVisibility: .visible) {
+                Button("Clear history", role: .destructive) { store.clearHistory() }
+            }
         }
     }
 }

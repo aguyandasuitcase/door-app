@@ -32,10 +32,24 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.body = "Someone is at the door."
         content.sound = .default
         content.categoryIdentifier = callCategory
-        content.interruptionLevel = .timeSensitive
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
         UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger))
+    }
+
+    /// Returns an error text when the test could not be scheduled.
+    func sendTest(station: String) async -> String? {
+        let center = UNUserNotificationCenter.current()
+        var status = await center.notificationSettings().authorizationStatus
+        if status == .notDetermined {
+            _ = await requestPermission()
+            status = await center.notificationSettings().authorizationStatus
+        }
+        guard status == .authorized || status == .provisional || status == .ephemeral else {
+            return "Notifications are not allowed. Turn them on for this app in iOS Settings."
+        }
+        postRing(station: station, after: 5)
+        return nil
     }
 
     func postMissed(station: String) {

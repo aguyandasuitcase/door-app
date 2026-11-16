@@ -12,6 +12,10 @@ struct MockDoorService: DoorServing {
     }
 }
 
+enum LiveState: Equatable {
+    case off, connecting, live(Int)
+}
+
 @MainActor
 final class DoorStore: ObservableObject {
     @Published var stations = MockData.stations
@@ -19,6 +23,8 @@ final class DoorStore: ObservableObject {
     @Published var selectedStationID = "DS1"
     @Published var connection: ConnectionState = .connected
     @Published var unlockState: UnlockState = .idle
+    @Published var liveState: LiveState = .off
+    private var liveTask: Task<Void, Never>?
 
     private let service: DoorServing
 
@@ -28,6 +34,32 @@ final class DoorStore: ObservableObject {
 
     var selectedStation: DoorStation {
         stations.first { $0.id == selectedStationID } ?? stations[0]
+    }
+
+    /// Opens the monitoring call to the door station. Today this only simulates it.
+    func startLive(seconds: Int = 60) {
+        guard liveState == .off else { return }
+        liveState = .connecting
+        liveTask = Task {
+            try? await Task.sleep(for: .seconds(1))
+            var left = seconds
+            while left > 0 && !Task.isCancelled {
+                liveState = .live(left)
+                try? await Task.sleep(for: .seconds(1))
+                left -= 1
+            }
+            liveState = .off
+        }
+    }
+
+    func stopLive() {
+        liveTask?.cancel()
+        liveTask = nil
+        liveState = .off
+    }
+
+    func clearHistory() {
+        visitors.removeAll()
     }
 
     func beginUnlock(relay: Int = 1) {

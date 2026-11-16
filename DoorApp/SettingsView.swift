@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("notifyMissed") private var notifyMissed = true
     @AppStorage("keepAlive") private var keepAlive = false
     @ObservedObject private var alive = KeepAlive.shared
+    @State private var alertText: String?
 
     var body: some View {
         NavigationStack {
@@ -43,7 +44,7 @@ struct SettingsView: View {
                         Task { _ = await NotificationManager.shared.requestPermission() }
                     }
                     Button("Send test ring in 5 seconds") {
-                        NotificationManager.shared.postRing(station: store.selectedStation.name, after: 5)
+                        Task { alertText = await NotificationManager.shared.sendTest(station: store.selectedStation.name) }
                     }
                     Toggle("Keep running in background", isOn: Binding(
                         get: { keepAlive },
@@ -59,25 +60,33 @@ struct SettingsView: View {
                 }
                 Section("Testing") {
                     Button("Preview incoming call") {
-                        CallActivityController.startDemo()
+                        alertText = CallActivityController.startDemo()
                     }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(AppBackground())
             .navigationTitle("Settings")
+            .alert("Could not start", isPresented: Binding(get: { alertText != nil }, set: { if !$0 { alertText = nil } })) {
+                Button("OK") { alertText = nil }
+            } message: { Text(alertText ?? "") }
         }
     }
 }
 
 enum CallActivityController {
-    static func startDemo() {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+    /// Returns an error text when the demo could not start.
+    static func startDemo() -> String? {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            return "Live Activities are off or not available for this install."
+        }
         let attributes = DoorCallAttributes(stationName: "Front door", stationCode: "DT-DS1")
         let state = DoorCallAttributes.ContentState(status: "Ringing")
-        _ = try? Activity.request(
-            attributes: attributes,
-            content: .init(state: state, staleDate: nil)
-        )
+        do {
+            _ = try Activity.request(attributes: attributes, content: .init(state: state, staleDate: nil))
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
     }
 }
