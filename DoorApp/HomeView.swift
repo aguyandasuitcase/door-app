@@ -135,7 +135,10 @@ struct StationsRow: View {
                 .padding(10)
                 .frame(maxWidth: .infinity)
                 .glassCard(cornerRadius: 28)
+                .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .onTapGesture { store.select(station) }
                 .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
             }
         }
     }

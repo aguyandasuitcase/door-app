@@ -58,6 +58,22 @@ final class DoorStore: ObservableObject {
         liveState = .off
     }
 
+    /// Replaces the station list, for example after a doorbell QR was added or switched.
+    func setStations(_ list: [DoorStation]) {
+        guard !list.isEmpty else { return }
+        stations = list
+        if !list.contains(where: { $0.id == selectedStationID }) {
+            selectedStationID = list[0].id
+            stopLive()
+        }
+    }
+
+    func select(_ station: DoorStation) {
+        guard station.id != selectedStationID else { return }
+        stopLive()
+        selectedStationID = station.id
+    }
+
     func clearHistory() {
         visitors.removeAll()
     }

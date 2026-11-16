@@ -60,7 +60,28 @@ struct LiveCard: View {
             }
         }
         .overlay(alignment: .topLeading) {
-            LiveChip(name: store.selectedStation.name, live: isLive).padding(12)
+            Menu {
+                ForEach(store.stations) { station in
+                    Button {
+                        store.select(station)
+                    } label: {
+                        if station.id == store.selectedStationID {
+                            Label(station.name, systemImage: "checkmark")
+                        } else {
+                            Text(station.name)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    LiveChip(name: store.selectedStation.name, live: isLive)
+                    if store.stations.count > 1 {
+                        Image(systemName: "chevron.down").font(.caption2.weight(.bold)).foregroundStyle(.white)
+                    }
+                }
+            }
+            .disabled(store.stations.count < 2)
+            .padding(12)
         }
         .frame(height: height)
         .frame(maxWidth: .infinity)

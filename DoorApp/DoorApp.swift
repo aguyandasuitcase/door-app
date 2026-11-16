@@ -22,6 +22,16 @@ struct DoorApp: App {
 }
 
 struct RootView: View {
+    @EnvironmentObject private var store: DoorStore
+    @EnvironmentObject private var doorbells: DoorbellStore
+
+    private func syncStations() {
+        guard let bell = doorbells.active, !bell.stations.isEmpty else { return }
+        store.setStations(bell.stations.sorted { $0.index < $1.index }.map {
+            DoorStation(id: "DS\($0.index)", name: $0.name, code: $0.name, isOnline: true)
+        })
+    }
+
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house.fill") { HomeView() }
@@ -29,6 +39,8 @@ struct RootView: View {
             Tab("Settings", systemImage: "gearshape.fill") { SettingsView() }
         }
         .tabViewStyle(.sidebarAdaptable)
+        .onAppear { syncStations() }
+        .onChange(of: doorbells.active) { _, _ in syncStations() }
     }
 }
 
