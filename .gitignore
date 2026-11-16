@@ -1,3 +1,5 @@
 DoorApp.xcodeproj
 build/
 .DS_Store
+Vendor/
+project-sip.yml

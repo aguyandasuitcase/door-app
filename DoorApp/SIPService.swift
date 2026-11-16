@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
-#if canImport(linphonesw)
-import linphonesw
+#if LINPHONE
 
 /// SIP connection to the doorbell (Linphone SDK). Experimental: the dial format and the
 /// unlock command are still being confirmed, so everything is logged for the Connection test screen.
@@ -32,6 +31,11 @@ final class SIPService: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "dialTemplate") }
     }
 
+    var dtmfMode: String {
+        get { UserDefaults.standard.string(forKey: "dtmfMode") ?? "both" }
+        set { UserDefaults.standard.set(newValue, forKey: "dtmfMode") }
+    }
+
     func addLog(_ text: String) {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss"
@@ -47,7 +51,8 @@ final class SIPService: ObservableObject {
         core.videoCaptureEnabled = false
         core.videoDisplayEnabled = true
         core.keepAliveEnabled = true
-        for payload in core.videoPayloadTypes { _ = payload.enable(enabled: true) }
+        // Same as the official app: H.264 on, H.265 off
+        for payload in core.videoPayloadTypes { _ = payload.enable(enabled: payload.mimeType == "H264") }
         delegate = CoreDelegateStub(
             onCallStateChanged: { [weak self] (_: Core, call: Call, state: Call.State, message: String) in
                 Task { @MainActor in self?.callChanged(call, state, message) }
@@ -152,7 +157,9 @@ final class SIPService: ObservableObject {
     }
 
     func sendDTMF(_ digits: String) {
-        guard let call = core?.currentCall else { addLog("No active call for DTMF"); return }
+        guard let core, let call = core.currentCall else { addLog("No active call for DTMF"); return }
+        core.useInfoForDtmf = (dtmfMode != "rfc2833")
+        core.useRfc2833ForDtmf = (dtmfMode != "info")
         do {
             try call.sendDtmfs(dtmfs: digits)
             addLog("DTMF sent: \(digits)")
@@ -231,6 +238,11 @@ final class SIPService: ObservableObject {
         get { UserDefaults.standard.string(forKey: "dialTemplate") ?? "{home}" }
         set { UserDefaults.standard.set(newValue, forKey: "dialTemplate") }
     }
+    var dtmfMode: String {
+        get { UserDefaults.standard.string(forKey: "dtmfMode") ?? "both" }
+        set { UserDefaults.standard.set(newValue, forKey: "dtmfMode") }
+    }
+
     func addLog(_ text: String) { log.append(text) }
     func register(_ bell: Doorbell) { addLog("SIP library not included in this build") }
     func target(for station: DoorbellStation, bell: Doorbell) -> String { "" }

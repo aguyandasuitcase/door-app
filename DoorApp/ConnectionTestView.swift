@@ -7,6 +7,7 @@ struct ConnectionTestView: View {
     @State private var transport = SIPService.shared.transport
     @State private var template = SIPService.shared.dialTemplate
     @State private var dtmf = "#"
+    @State private var dtmfMode = SIPService.shared.dtmfMode
     @State private var manual = ""
 
     var body: some View {
@@ -50,6 +51,18 @@ struct ConnectionTestView: View {
                     TextField("DTMF digits", text: $dtmf)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                     Button("Send") { sip.sendDTMF(dtmf) }
+                }
+                Picker("Method", selection: $dtmfMode) {
+                    Text("Both").tag("both")
+                    Text("SIP INFO").tag("info")
+                    Text("RFC2833").tag("rfc2833")
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: dtmfMode) { _, v in sip.dtmfMode = v }
+                HStack {
+                    ForEach(["#", "*", "1", "0", "00"], id: \.self) { d in
+                        Button(d) { dtmf = d; sip.sendDTMF(d) }.buttonStyle(.bordered)
+                    }
                 }
             }
             Section("Log") {
