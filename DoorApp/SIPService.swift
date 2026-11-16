@@ -64,7 +64,6 @@ final class SIPService: ObservableObject {
         if let t = core.transports {
             t.udpPort = 5068
             t.tcpPort = 5068
-            core.transports = t
         }
         core.videoCaptureEnabled = false
         core.videoDisplayEnabled = true
