@@ -6,6 +6,10 @@ struct DoorApp: App {
     @StateObject private var store = DoorStore()
     @StateObject private var doorbells = DoorbellStore()
 
+    init() {
+        NotificationManager.shared.setUp()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

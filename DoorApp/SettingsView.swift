@@ -36,6 +36,17 @@ struct SettingsView: View {
                     Toggle("Save visitor snapshots", isOn: $saveSnapshots)
                     Toggle("Notify on missed calls", isOn: $notifyMissed)
                 }
+                Section("Notifications") {
+                    Button("Allow notifications") {
+                        Task { _ = await NotificationManager.shared.requestPermission() }
+                    }
+                    Button("Send test ring in 5 seconds") {
+                        NotificationManager.shared.postRing(station: store.selectedStation.name, after: 5)
+                    }
+                    Text("Lock the phone after tapping to see how a ring looks. These are local notifications, so a real ring while the app is closed needs the SIP connection or a push relay.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Section("Testing") {
                     Button("Preview incoming call") {
                         CallActivityController.startDemo()
