@@ -6,10 +6,12 @@ jobs:
     steps:
       - name: Probe
         run: |
-          curl -sS -m 30 https://download.linphone.org/releases/ios/ | grep -o 'href="linphone-sdk-[0-9.]*zip"' | sort -V | tail -5
-          V=$(curl -sS -m 30 https://download.linphone.org/releases/ios/ | grep -o 'href="linphone-sdk-[0-9][0-9.]*[0-9]\.zip"' | sed 's/href="//;s/"//' | sort -V | tail -1)
-          echo "LATEST=$V"
-          curl -sS -m 600 -o sdk.zip "https://download.linphone.org/releases/ios/$V"
-          ls -l sdk.zip
-          unzip -l sdk.zip | awk '{print $4}' | grep -v '/.*/.*/.*/' | head -60
-          unzip -l sdk.zip | grep -i 'linphonesw' | head -10
+          curl -sS -m 600 -o sdk.zip https://download.linphone.org/releases/ios/linphone-sdk-5.5.41.zip
+          unzip -l sdk.zip | awk '{print $4}' | grep 'XCFrameworks/[^/]*/$' 
+          unzip -l sdk.zip | awk '{print $4}' | grep -c 'XCFrameworks/'
+          unzip -q sdk.zip 'linphone-sdk/apple-darwin/share/linphonesw/*' 'linphone-sdk/apple-darwin/Tools/*'
+          head -c 1500 linphone-sdk/apple-darwin/share/linphonesw/LinphoneWrapper.swift
+          grep -n '^import' linphone-sdk/apple-darwin/share/linphonesw/LinphoneWrapper.swift | head
+          ls linphone-sdk/apple-darwin/share/linphonesw
+          cat linphone-sdk/apple-darwin/Tools/deploy.sh | head -30
+          unzip -l sdk.zip | awk '{print $4}' | grep -i 'linphone.xcframework/' | head -12
