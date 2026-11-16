@@ -58,6 +58,14 @@ final class SIPService: ObservableObject {
         })
         ls.addDelegate(delegate: logDelegate!)
         let core = try Factory.Instance.createCore(configPath: "", factoryConfigPath: "", systemContext: nil)
+        // Same ports as the official app: SIP 5068, audio 7200-7299, video 9200-9299
+        core.setAudioPortRange(minPort: 7200, maxPort: 7299)
+        core.setVideoPortRange(minPort: 9200, maxPort: 9299)
+        if let t = core.transports {
+            t.udpPort = 5068
+            t.tcpPort = 5068
+            core.transports = t
+        }
         core.videoCaptureEnabled = false
         core.videoDisplayEnabled = true
         core.keepAliveEnabled = true
