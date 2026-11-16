@@ -6,15 +6,26 @@ TOKEN="${1:?Paste the token from GitHub: repo Settings, Actions, Runners, New se
 REPO_URL="https://github.com/aguyandasuitcase/door-app"
 DIR="$HOME/actions-runner-door"
 
-echo "== Checking Xcode"
-if ! xcodebuild -version >/dev/null 2>&1; then
-  echo "Xcode is not installed or not selected. Install Xcode 26 from the App Store, open it once, then run this again."; exit 1
+echo "== Looking for Xcode"
+# Finds Xcode on any disk, including external drives, and picks the newest.
+CANDIDATES=$(mdfind "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'" 2>/dev/null; ls -d /Applications/Xcode*.app /Volumes/*/Applications/Xcode*.app /Volumes/*/Xcode*.app 2>/dev/null)
+BEST=""; BESTV="0"
+while IFS= read -r app; do
+  [ -d "$app/Contents/Developer" ] || continue
+  v=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist" 2>/dev/null || echo 0)
+  if [ "$(printf '%s\n%s\n' "$BESTV" "$v" | sort -V | tail -1)" = "$v" ]; then BEST="$app"; BESTV="$v"; fi
+done < <(echo "$CANDIDATES" | sort -u)
+if [ -z "$BEST" ]; then
+  echo "No Xcode found. If it is on an external disk, make sure the disk is connected, then run this again."; exit 1
 fi
+echo "Using $BEST (version $BESTV)"
+sudo xcode-select -s "$BEST/Contents/Developer"
+sudo xcodebuild -license accept 2>/dev/null || true
+sudo xcodebuild -runFirstLaunch 2>/dev/null || true
 xcodebuild -version
 if ! xcodebuild -showsdks | grep -q "iphoneos26"; then
   echo "WARNING: iOS 26 SDK not found. Update Xcode to 26 or newer for Liquid Glass."
 fi
-sudo xcodebuild -license accept 2>/dev/null || true
 
 echo "== Checking Homebrew tools"
 if ! command -v brew >/dev/null; then
