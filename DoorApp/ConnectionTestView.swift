@@ -49,7 +49,7 @@ struct ConnectionTestView: View {
             } header: {
                 Text("Test call")
             } footer: {
-                Text("Placeholders: {home} {index} {hex} {user}")
+                Text("Placeholders: {base}{pad} (default), {home} {index} {hex} {user}")
             }
             Section("Unlock test") {
                 HStack {

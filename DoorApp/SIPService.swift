@@ -28,8 +28,8 @@ final class SIPService: ObservableObject {
     }
 
     var dialTemplate: String {
-        get { UserDefaults.standard.string(forKey: "dialTemplate") ?? "{home}" }
-        set { UserDefaults.standard.set(newValue, forKey: "dialTemplate") }
+        get { UserDefaults.standard.string(forKey: "dialTemplate2") ?? "{base}{pad}" }
+        set { UserDefaults.standard.set(newValue, forKey: "dialTemplate2") }
     }
 
     var dtmfMode: String {
@@ -126,6 +126,8 @@ final class SIPService: ObservableObject {
 
     func target(for station: DoorbellStation, bell: Doorbell) -> String {
         dialTemplate
+            .replacingOccurrences(of: "{base}", with: String(bell.homeID.dropLast(2)))
+            .replacingOccurrences(of: "{pad}", with: String(format: "%02d", station.index))
             .replacingOccurrences(of: "{home}", with: bell.homeID)
             .replacingOccurrences(of: "{index}", with: String(station.index))
             .replacingOccurrences(of: "{hex}", with: station.code.replacingOccurrences(of: "0x", with: ""))
@@ -226,6 +228,9 @@ final class SIPService: ObservableObject {
             calling = true
             callStatus = "Calling"
         case .OutgoingEarlyMedia, .StreamsRunning:
+            if let cp = call.currentParams {
+                addLog("Media: audio \(cp.audioEnabled) video \(cp.videoEnabled) videoDir \(cp.videoDirection)")
+            }
             calling = false
             callActive = true
             incoming = false
@@ -285,8 +290,8 @@ final class SIPService: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "sipTransport") }
     }
     var dialTemplate: String {
-        get { UserDefaults.standard.string(forKey: "dialTemplate") ?? "{home}" }
-        set { UserDefaults.standard.set(newValue, forKey: "dialTemplate") }
+        get { UserDefaults.standard.string(forKey: "dialTemplate2") ?? "{base}{pad}" }
+        set { UserDefaults.standard.set(newValue, forKey: "dialTemplate2") }
     }
     var dtmfMode: String {
         get { UserDefaults.standard.string(forKey: "dtmfMode") ?? "both" }
