@@ -6,8 +6,10 @@ jobs:
     steps:
       - name: Probe
         run: |
-          echo "== listing"; curl -sS -m 30 https://download.linphone.org/releases/ios/ | grep -o 'href="[^"]*"' | head -40
-          echo "== podspec"
-          h=$(printf linphone-sdk | md5 | cut -c1-3 | sed 's/\(.\)\(.\)\(.\)/\1\/\2\/\3/')
-          echo $h
-          curl -sS -m 30 "https://cdn.cocoapods.org/all_pods_versions_$(printf linphone-sdk | md5 | cut -c1-3 | sed 's/\(.\)\(.\)\(.\)/\1_\2_\3/').txt" | grep -i '^linphone' | head
+          curl -sS -m 30 https://download.linphone.org/releases/ios/ | grep -o 'href="linphone-sdk-[0-9.]*zip"' | sort -V | tail -5
+          V=$(curl -sS -m 30 https://download.linphone.org/releases/ios/ | grep -o 'href="linphone-sdk-[0-9][0-9.]*[0-9]\.zip"' | sed 's/href="//;s/"//' | sort -V | tail -1)
+          echo "LATEST=$V"
+          curl -sS -m 600 -o sdk.zip "https://download.linphone.org/releases/ios/$V"
+          ls -l sdk.zip
+          unzip -l sdk.zip | awk '{print $4}' | grep -v '/.*/.*/.*/' | head -60
+          unzip -l sdk.zip | grep -i 'linphonesw' | head -10
