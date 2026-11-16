@@ -24,17 +24,24 @@ jobs:
 
       - name: Find the Linphone SDK version
         run: |
-          for i in 1 2 3 4 5 6; do
+          V=""
+          for i in 1 2 3; do
             V=$(git ls-remote --tags --refs https://gitlab.linphone.org/BC/public/linphone-sdk-swift-ios.git 2>/dev/null | sed 's#.*refs/tags/##' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
             [ -n "$V" ] && break
-            echo "gitlab not reachable, retry $i"; sleep 20
+            sleep 10
           done
-          [ -n "$V" ] || { echo "Could not reach gitlab.linphone.org"; curl -sI --max-time 20 https://gitlab.linphone.org | head -3; exit 1; }
-          echo "Linphone SDK $V"
           echo "LINPHONE_VERSION=$V" >> "$GITHUB_ENV"
+          echo "Linphone SDK: ${V:-not reachable, building without SIP}"
 
       - name: Generate project
-        run: (command -v xcodegen >/dev/null || brew install xcodegen) && xcodegen generate
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          if [ -n "$LINPHONE_VERSION" ]; then
+            python3 scripts/enable-sip.py "$LINPHONE_VERSION"
+            xcodegen generate --spec project-sip.yml
+          else
+            xcodegen generate
+          fi
 
       - name: Build (no signing)
         run: |

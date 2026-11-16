@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+#if canImport(linphonesw)
 import linphonesw
 
 /// SIP connection to the doorbell (Linphone SDK). Experimental: the dial format and the
@@ -209,3 +210,41 @@ struct SIPVideoView: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {}
 }
+
+#else
+/// Stub used when this build was made without the Linphone SDK.
+@MainActor
+final class SIPService: ObservableObject {
+    static let shared = SIPService()
+    @Published var registration = "SIP library not included in this build"
+    @Published var registered = false
+    @Published var callStatus = "Unavailable"
+    @Published var calling = false
+    @Published var callActive = false
+    @Published var incoming = false
+    @Published var log: [String] = ["SIP library not included in this build"]
+    var transport: String {
+        get { UserDefaults.standard.string(forKey: "sipTransport") ?? "udp" }
+        set { UserDefaults.standard.set(newValue, forKey: "sipTransport") }
+    }
+    var dialTemplate: String {
+        get { UserDefaults.standard.string(forKey: "dialTemplate") ?? "{home}" }
+        set { UserDefaults.standard.set(newValue, forKey: "dialTemplate") }
+    }
+    func addLog(_ text: String) { log.append(text) }
+    func register(_ bell: Doorbell) { addLog("SIP library not included in this build") }
+    func target(for station: DoorbellStation, bell: Doorbell) -> String { "" }
+    func startLive(station: DoorbellStation, bell: Doorbell) { addLog("SIP library not included in this build") }
+    func dial(target: String, bell: Doorbell) { addLog("SIP library not included in this build") }
+    func hangUp() {}
+    func answer() {}
+    func decline() {}
+    func sendDTMF(_ digits: String) {}
+    func setVideoView(_ view: UIView) {}
+}
+
+struct SIPVideoView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView { UIView() }
+    func updateUIView(_ uiView: UIView, context: Context) {}
+}
+#endif
