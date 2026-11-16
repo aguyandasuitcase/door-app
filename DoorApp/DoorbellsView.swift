@@ -57,7 +57,10 @@ struct AddDoorbellView: View {
     @State private var username = ""
     @State private var password = ""
     @State private var domain = ""
-    @State private var raw = ""
+    @State private var password2 = ""
+    @State private var homeID = ""
+    @State private var callCode = ""
+    @State private var stations: [DoorbellStation] = []
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var note: String?
 
@@ -88,6 +91,11 @@ struct AddDoorbellView: View {
                     TextField("Domain (optional)", text: $domain)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
+                if !stations.isEmpty {
+                    Section("Door stations found") {
+                        ForEach(stations) { Text($0.name) }
+                    }
+                }
             }
             .navigationTitle(existing == nil ? "Add doorbell" : "Edit doorbell")
             .navigationBarTitleDisplayMode(.inline)
@@ -117,15 +125,20 @@ struct AddDoorbellView: View {
             .onAppear {
                 guard let e = existing else { return }
                 name = e.name; host = e.host; port = String(e.port)
-                username = e.username; domain = e.domain; raw = e.rawPayload
+                username = e.username; domain = e.domain
+                homeID = e.homeID; callCode = e.callCode; stations = e.stations
                 password = KeychainStore.password(for: e.id)
+                password2 = KeychainStore.password(for: e.id, slot: "second")
             }
         }
     }
 
     private func apply(_ text: String) {
-        raw = text
         let r = QRParser.parse(text)
+        if !r.password2.isEmpty { password2 = r.password2 }
+        if !r.homeID.isEmpty { homeID = r.homeID }
+        if !r.callCode.isEmpty { callCode = r.callCode }
+        if !r.stations.isEmpty { stations = r.stations }
         if !r.host.isEmpty { host = r.host }
         port = String(r.port)
         if !r.username.isEmpty { username = r.username }
@@ -157,9 +170,11 @@ struct AddDoorbellView: View {
         bell.port = Int(port) ?? 5068
         bell.username = username
         bell.domain = domain
-        bell.rawPayload = raw
-        if existing == nil { doorbells.add(bell, password: password) }
-        else { doorbells.update(bell, password: password) }
+        bell.homeID = homeID
+        bell.callCode = callCode
+        bell.stations = stations
+        if existing == nil { doorbells.add(bell, password: password, password2: password2) }
+        else { doorbells.update(bell, password: password, password2: password2) }
         dismiss()
     }
 }

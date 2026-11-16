@@ -9,15 +9,24 @@ struct Doorbell: Identifiable, Codable, Hashable {
     var port: Int = 5068
     var username: String
     var domain: String = ""
-    var rawPayload: String = ""
+    var homeID: String = ""
+    var callCode: String = ""
+    var stations: [DoorbellStation] = []
+}
+
+struct DoorbellStation: Codable, Hashable, Identifiable {
+    var id: Int { index }
+    var index: Int
+    var name: String
+    var code: String
 }
 
 enum KeychainStore {
-    static func setPassword(_ password: String, for id: UUID) {
+    static func setPassword(_ password: String, for id: UUID, slot: String = "main") {
         let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "door.sip",
-            kSecAttrAccount as String: id.uuidString
+            kSecAttrAccount as String: id.uuidString + "." + slot
         ]
         SecItemDelete(base as CFDictionary)
         guard !password.isEmpty else { return }
@@ -26,11 +35,11 @@ enum KeychainStore {
         SecItemAdd(item as CFDictionary, nil)
     }
 
-    static func password(for id: UUID) -> String {
+    static func password(for id: UUID, slot: String = "main") -> String {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "door.sip",
-            kSecAttrAccount as String: id.uuidString,
+            kSecAttrAccount as String: id.uuidString + "." + slot,
             kSecReturnData as String: true
         ]
         var out: AnyObject?
@@ -62,22 +71,27 @@ final class DoorbellStore: ObservableObject {
 
     var active: Doorbell? { doorbells.first { $0.id == activeID } ?? doorbells.first }
 
-    func add(_ doorbell: Doorbell, password: String) {
+    func add(_ doorbell: Doorbell, password: String, password2: String = "") {
         doorbells.append(doorbell)
         KeychainStore.setPassword(password, for: doorbell.id)
+        KeychainStore.setPassword(password2, for: doorbell.id, slot: "second")
         if activeID == nil { activeID = doorbell.id }
         save()
     }
 
-    func update(_ doorbell: Doorbell, password: String) {
+    func update(_ doorbell: Doorbell, password: String, password2: String = "") {
         guard let i = doorbells.firstIndex(where: { $0.id == doorbell.id }) else { return }
         doorbells[i] = doorbell
         KeychainStore.setPassword(password, for: doorbell.id)
+        KeychainStore.setPassword(password2, for: doorbell.id, slot: "second")
         save()
     }
 
     func remove(at offsets: IndexSet) {
-        for i in offsets { KeychainStore.setPassword("", for: doorbells[i].id) }
+        for i in offsets {
+            KeychainStore.setPassword("", for: doorbells[i].id)
+            KeychainStore.setPassword("", for: doorbells[i].id, slot: "second")
+        }
         doorbells.remove(atOffsets: offsets)
         if !doorbells.contains(where: { $0.id == activeID }) { activeID = doorbells.first?.id }
         save()
@@ -101,9 +115,45 @@ enum QRParser {
         var password = ""
         var domain = ""
         var name = ""
+        var password2 = ""
+        var homeID = ""
+        var callCode = ""
+        var stations: [DoorbellStation] = []
+    }
+
+    /// Format used by the indoor monitor: <USER>..</USER><PSW>..</PSW><DOMAIN>host:port</DOMAIN>
+    /// <HOME ID>..</HOME ID><PSW2>..</PSW2><CALL CODE>..</CALL CODE> and a list of
+    /// <item>index,name,homeid,type,hexcode</item> door stations.
+    private static func parseMonitor(_ text: String) -> Result? {
+        guard text.contains("<USER>"), text.contains("<DOMAIN>") else { return nil }
+        func tag(_ name: String) -> String {
+            guard let a = text.range(of: "<\(name)>"), let b = text.range(of: "</\(name)>", range: a.upperBound..<text.endIndex)
+            else { return "" }
+            return String(text[a.upperBound..<b.lowerBound])
+        }
+        var r = Result()
+        r.username = tag("USER")
+        r.password = tag("PSW")
+        r.password2 = tag("PSW2")
+        r.homeID = tag("HOME ID")
+        r.callCode = tag("CALL CODE")
+        let domain = tag("DOMAIN")
+        let parts = domain.split(separator: ":", maxSplits: 1).map(String.init)
+        r.host = parts.first ?? ""
+        if parts.count == 2, let p = Int(parts[1]) { r.port = p }
+        var rest = Substring(text)
+        while let a = rest.range(of: "<item>"), let b = rest.range(of: "</item>", range: a.upperBound..<rest.endIndex) {
+            let f = rest[a.upperBound..<b.lowerBound].split(separator: ",").map(String.init)
+            if f.count >= 2, let i = Int(f[0]) {
+                r.stations.append(DoorbellStation(index: i, name: f[1], code: f.last ?? ""))
+            }
+            rest = rest[b.upperBound...]
+        }
+        return r
     }
 
     static func parse(_ text: String) -> Result {
+        if let r = parseMonitor(text) { return r }
         var fields: [String: String] = [:]
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
