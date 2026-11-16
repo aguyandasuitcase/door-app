@@ -146,7 +146,7 @@ final class SIPService: ObservableObject {
             params.videoDirection = MediaDirection.RecvOnly
             params.audioDirection = MediaDirection.SendRecv
             core.micEnabled = false
-            core.terminateAllCalls()
+            try? core.terminateAllCalls()
             addLog("INVITE sip:\(target)@\(host)")
             calling = true
             if core.inviteAddressWithParams(addr: address, params: params) == nil {
