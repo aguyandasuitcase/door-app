@@ -18,10 +18,10 @@ final class KeepAlive: NSObject, ObservableObject, CLLocationManagerDelegate {
     override init() {
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
-        manager.distanceFilter = 3_000
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
+        manager.distanceFilter = kCLDistanceFilterNone
         manager.pausesLocationUpdatesAutomatically = false
-        manager.showsBackgroundLocationIndicator = false
+        manager.showsBackgroundLocationIndicator = true
         status = manager.authorizationStatus
     }
 
@@ -72,6 +72,24 @@ final class KeepAlive: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {}
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+    @Published private(set) var updates = 0
+    @Published private(set) var lastError = ""
+
+    var statusText: String {
+        switch status {
+        case .authorizedAlways: return "Always"
+        case .authorizedWhenInUse: return "While using"
+        case .denied: return "Denied"
+        case .restricted: return "Restricted"
+        default: return "Not asked"
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        Task { @MainActor in self.updates += 1 }
+    }
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let text = error.localizedDescription
+        Task { @MainActor in self.lastError = text }
+    }
 }

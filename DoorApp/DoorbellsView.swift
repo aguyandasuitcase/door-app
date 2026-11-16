@@ -92,8 +92,16 @@ struct AddDoorbellView: View {
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 if !stations.isEmpty {
-                    Section("Door stations found") {
-                        ForEach(stations) { Text($0.name) }
+                    Section {
+                        ForEach($stations) { $station in
+                            Toggle(isOn: $station.enabled) {
+                                TextField("Name", text: $station.name)
+                            }
+                        }
+                    } header: {
+                        Text("Door stations")
+                    } footer: {
+                        Text("Switch on the ones you use and rename them. Only switched on stations appear in the app.")
                     }
                 }
             }

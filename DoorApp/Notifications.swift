@@ -61,18 +61,26 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
-    // Show banners even while the app is open.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification) async
-        -> UNNotificationPresentationOptions {
-        [.banner, .sound, .list]
+    // Completion handler versions: the async versions crash with the iOS 26 SDK
+    // when the system calls them off the main thread.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound, .list])
     }
 
     // The "Open door" button on a notification. Face ID or passcode is required first.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                didReceive response: UNNotificationResponse) async {
-        if response.actionIdentifier == openAction {
-            _ = try? await UnlockDoorIntent().perform()
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let isOpen = response.actionIdentifier == "OPEN_DOOR"
+        if isOpen {
+            Task.detached {
+                _ = try? await UnlockDoorIntent().perform()
+                completionHandler()
+            }
+        } else {
+            completionHandler()
         }
     }
 }

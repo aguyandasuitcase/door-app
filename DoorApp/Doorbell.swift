@@ -19,6 +19,21 @@ struct DoorbellStation: Codable, Hashable, Identifiable {
     var index: Int
     var name: String
     var code: String
+    var enabled: Bool = true
+
+    enum CodingKeys: String, CodingKey { case index, name, code, enabled }
+
+    init(index: Int, name: String, code: String, enabled: Bool = true) {
+        self.index = index; self.name = name; self.code = code; self.enabled = enabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        index = try c.decode(Int.self, forKey: .index)
+        name = try c.decode(String.self, forKey: .name)
+        code = try c.decode(String.self, forKey: .code)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+    }
 }
 
 enum KeychainStore {

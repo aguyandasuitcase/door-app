@@ -2,20 +2,44 @@ import SwiftUI
 
 struct LiveCard: View {
     @EnvironmentObject private var store: DoorStore
+    @EnvironmentObject private var doorbells: DoorbellStore
+    @ObservedObject private var sip = SIPService.shared
     var height: CGFloat
 
+    /// The real call when the doorbell is connected, the demo otherwise.
+    private var effective: LiveState {
+        if sip.callActive { return .live(0) }
+        if sip.calling { return .connecting }
+        return store.liveState
+    }
+
     private var isLive: Bool {
-        if case .live = store.liveState { return true }
+        if case .live = effective { return true }
         return false
+    }
+
+    private func start() {
+        if sip.registered, let bell = doorbells.active,
+           let station = bell.stations.first(where: { "DS\($0.index)" == store.selectedStationID }) {
+            sip.startLive(station: station, bell: bell)
+        } else {
+            store.startLive()
+        }
+    }
+
+    private func stop() {
+        sip.hangUp()
+        store.stopLive()
     }
 
     var body: some View {
         ZStack {
             CameraPlaceholder()
-                .opacity(store.liveState == .off ? 0.55 : 1)
-            switch store.liveState {
+                .opacity(effective == .off ? 0.55 : 1)
+            if sip.callActive { SIPVideoView() }
+            switch effective {
             case .off:
-                Button { store.startLive() } label: {
+                Button { start() } label: {
                     VStack(spacing: 8) {
                         Image(systemName: "play.fill").font(.system(size: 26))
                         Text("Tap to view").font(.footnote.weight(.semibold))
@@ -36,17 +60,21 @@ struct LiveCard: View {
                 VStack {
                     Spacer()
                     HStack(spacing: 10) {
-                        Text("Preview only, no video yet")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .glassBackground(in: Capsule())
+                        if !sip.callActive {
+                            Text("Preview only, no video yet")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .glassBackground(in: Capsule())
+                        }
                         Spacer()
-                        Text("\(left)s").font(.footnote.monospacedDigit().weight(.semibold))
-                            .padding(.horizontal, 10).padding(.vertical, 8)
-                            .glassBackground(in: Capsule())
+                        if !sip.callActive {
+                            Text("\(left)s").font(.footnote.monospacedDigit().weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 8)
+                                .glassBackground(in: Capsule())
+                        }
                         RoundGlassButton(systemName: "speaker.wave.2.fill", label: "Speaker")
                         RoundGlassButton(systemName: "mic.fill", label: "Hold to talk")
-                        Button { store.stopLive() } label: {
+                        Button { stop() } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 17, weight: .semibold))
                                 .frame(width: 44, height: 44)
@@ -57,6 +85,23 @@ struct LiveCard: View {
                     }
                     .padding(12)
                 }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if sip.incoming {
+                HStack(spacing: 12) {
+                    Button { sip.decline() } label: {
+                        Label("Decline", systemImage: "phone.down.fill")
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Color.red, in: Capsule()).foregroundStyle(.white)
+                    }
+                    Button { sip.answer() } label: {
+                        Label("Answer", systemImage: "phone.fill")
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Color.green, in: Capsule()).foregroundStyle(.white)
+                    }
+                }
+                .padding(12)
             }
         }
         .overlay(alignment: .topLeading) {

@@ -27,9 +27,17 @@ struct RootView: View {
 
     private func syncStations() {
         guard let bell = doorbells.active, !bell.stations.isEmpty else { return }
-        store.setStations(bell.stations.sorted { $0.index < $1.index }.map {
+        let active = bell.stations.filter(\.enabled)
+        let shown = active.isEmpty ? Array(bell.stations.prefix(1)) : active
+        store.setStations(shown.sorted { $0.index < $1.index }.map {
             DoorStation(id: "DS\($0.index)", name: $0.name, code: $0.name, isOnline: true)
         })
+    }
+
+    private func connect() {
+        guard UserDefaults.standard.object(forKey: "autoConnect") as? Bool ?? true,
+              let bell = doorbells.active else { return }
+        SIPService.shared.register(bell)
     }
 
     var body: some View {
@@ -39,8 +47,8 @@ struct RootView: View {
             Tab("Settings", systemImage: "gearshape.fill") { SettingsView() }
         }
         .tabViewStyle(.sidebarAdaptable)
-        .onAppear { syncStations() }
-        .onChange(of: doorbells.active) { _, _ in syncStations() }
+        .onAppear { syncStations(); connect() }
+        .onChange(of: doorbells.active) { _, _ in syncStations(); connect() }
     }
 }
 

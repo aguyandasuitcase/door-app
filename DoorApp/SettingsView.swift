@@ -21,6 +21,9 @@ struct SettingsView: View {
                         LabeledContent("Doorbells", value: doorbells.active?.name ?? "Add one")
                     }
                 }
+                Section("Connection") {
+                    NavigationLink("Connection test") { ConnectionTestView() }
+                }
                 Section("Door") {
                     Picker("Main door station", selection: $store.selectedStationID) {
                         ForEach(store.stations) { Text($0.name).tag($0.id) }
@@ -49,6 +52,16 @@ struct SettingsView: View {
                     Toggle("Keep running in background", isOn: Binding(
                         get: { keepAlive },
                         set: { keepAlive = $0; KeepAlive.shared.setEnabled($0) }))
+                    if keepAlive {
+                        LabeledContent("Location permission", value: alive.statusText)
+                        LabeledContent("Running", value: alive.isRunning ? "Yes, \(alive.updates) updates" : "No")
+                        if !alive.lastError.isEmpty {
+                            Text(alive.lastError).font(.footnote).foregroundStyle(.red)
+                        }
+                        Button("Open iOS Settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                        }
+                    }
                     if keepAlive && alive.status != .authorizedAlways {
                         Text("Choose Always for location when iOS asks, otherwise the app can still be stopped. Your position is never used.")
                             .font(.footnote)

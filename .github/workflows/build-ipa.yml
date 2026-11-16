@@ -22,6 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Find the Linphone SDK version
+        run: |
+          V=$(git ls-remote --tags --refs https://gitlab.linphone.org/BC/public/linphone-sdk-swift-ios.git | sed 's#.*refs/tags/##' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          echo "Linphone SDK $V"
+          echo "LINPHONE_VERSION=$V" >> "$GITHUB_ENV"
+
       - name: Generate project
         run: (command -v xcodegen >/dev/null || brew install xcodegen) && xcodegen generate
 

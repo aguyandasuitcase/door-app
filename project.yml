@@ -14,6 +14,11 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     GENERATE_INFOPLIST_FILE: NO
 
+packages:
+  linphonesw:
+    url: https://gitlab.linphone.org/BC/public/linphone-sdk-swift-ios.git
+    exactVersion: ${LINPHONE_VERSION}
+
 targets:
   DoorApp:
     type: application
@@ -54,6 +59,7 @@ targets:
     dependencies:
       - target: DoorWidgets
       - target: DoorWatch
+      - package: linphonesw
 
   DoorWidgets:
     type: app-extension
