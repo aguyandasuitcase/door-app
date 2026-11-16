@@ -144,7 +144,9 @@ final class SIPService: ObservableObject {
             let params = try core.createCallParams(call: nil)
             params.videoEnabled = true
             params.videoDirection = MediaDirection.RecvOnly
-            params.audioDirection = MediaDirection.RecvOnly
+            params.audioDirection = MediaDirection.SendRecv
+            core.micEnabled = false
+            core.terminateAllCalls()
             addLog("INVITE sip:\(target)@\(host)")
             calling = true
             if core.inviteAddressWithParams(addr: address, params: params) == nil {
@@ -223,11 +225,15 @@ final class SIPService: ObservableObject {
         case .OutgoingInit, .OutgoingProgress, .OutgoingRinging:
             calling = true
             callStatus = "Calling"
-        case .OutgoingEarlyMedia, .Connected, .StreamsRunning:
+        case .OutgoingEarlyMedia, .StreamsRunning:
             calling = false
             callActive = true
             incoming = false
             callStatus = "Live"
+        case .Connected:
+            callStatus = "Connected, waiting for media"
+        case .PausedByRemote, .Paused:
+            callStatus = "On hold by the other side"
         case .End, .Error, .Released:
             calling = false
             callActive = false
