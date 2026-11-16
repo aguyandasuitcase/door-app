@@ -1,0 +1,13 @@
+name: Probe SDK hosts
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: macos-26
+    steps:
+      - name: Probe
+        run: |
+          for u in https://gitlab.linphone.org/BC/public/linphone-sdk-swift-ios.git https://gitlab.linphone.org/BC/public/linphone-sdk.git https://github.com/BelledonneCommunications/linphone-sdk.git https://download.linphone.org/releases/ios/ https://cdn.cocoapods.org/ https://git.linphone.org/ https://www.linphone.org/ https://github.com/BelledonneCommunications/linphone-iphone.git; do
+            echo "== $u"; curl -sS -m 20 -o /dev/null -w "%{http_code}\n" -I "$u" 2>&1 | tail -1
+          done
+          echo "== tags"; git ls-remote --tags https://github.com/BelledonneCommunications/linphone-sdk.git 2>&1 | tail -5
+          echo "== pod"; pod --version; pod search linphone 2>&1 | head -5 || true
