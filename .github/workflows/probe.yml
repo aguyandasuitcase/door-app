@@ -6,8 +6,8 @@ jobs:
     steps:
       - name: Probe
         run: |
-          for u in https://gitlab.linphone.org/BC/public/linphone-sdk-swift-ios.git https://gitlab.linphone.org/BC/public/linphone-sdk.git https://github.com/BelledonneCommunications/linphone-sdk.git https://download.linphone.org/releases/ios/ https://cdn.cocoapods.org/ https://git.linphone.org/ https://www.linphone.org/ https://github.com/BelledonneCommunications/linphone-iphone.git; do
-            echo "== $u"; curl -sS -m 20 -o /dev/null -w "%{http_code}\n" -I "$u" 2>&1 | tail -1
-          done
-          echo "== tags"; git ls-remote --tags https://github.com/BelledonneCommunications/linphone-sdk.git 2>&1 | tail -5
-          echo "== pod"; pod --version; pod search linphone 2>&1 | head -5 || true
+          echo "== listing"; curl -sS -m 30 https://download.linphone.org/releases/ios/ | grep -o 'href="[^"]*"' | head -40
+          echo "== podspec"
+          h=$(printf linphone-sdk | md5 | cut -c1-3 | sed 's/\(.\)\(.\)\(.\)/\1\/\2\/\3/')
+          echo $h
+          curl -sS -m 30 "https://cdn.cocoapods.org/all_pods_versions_$(printf linphone-sdk | md5 | cut -c1-3 | sed 's/\(.\)\(.\)\(.\)/\1_\2_\3/').txt" | grep -i '^linphone' | head
