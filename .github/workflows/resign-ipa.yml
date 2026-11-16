@@ -1,0 +1,62 @@
+name: Ad-hoc resign IPA
+
+# Adds a plain ad-hoc signature (LC_CODE_SIGNATURE only) to every Mach-O of a built IPA,
+# so tools that need an existing signature command (Tetherless) can replace it.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag that holds DoorApp.ipa"
+        default: "build-5"
+
+permissions:
+  contents: write
+
+jobs:
+  resign:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the original IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.tag }}" -p DoorApp.ipa -O DoorApp.ipa
+          shasum -a 256 DoorApp.ipa
+
+      - name: Unpack and inspect
+        run: |
+          mkdir work && cd work && unzip -q ../DoorApp.ipa
+          APP="$(echo Payload/*.app)"; echo "APP=$PWD/$APP" >> "$GITHUB_ENV"
+          find Payload -type f -exec file {} \; | grep -i mach-o || true
+          sw_vers; codesign --version 2>&1 || true
+
+      - name: Ad-hoc sign (no identity, no team)
+        run: |
+          # --deep does not reach Watch/, so sign each nested app first, then the main app
+          for W in "$APP"/Watch/*.app; do codesign --force --deep --sign - --timestamp=none "$W"; done
+          for X in "$APP"/PlugIns/*.appex; do codesign --force --deep --sign - --timestamp=none "$X"; done
+          codesign --force --deep --sign - --timestamp=none "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dvv "$APP" 2>&1 | head -12
+
+      - name: Strip _CodeSignature and provisioning profile
+        run: |
+          find "$APP" -name _CodeSignature -type d -prune -exec rm -rf {} +
+          find "$APP" -name embedded.mobileprovision -delete
+
+      - name: Repack and verify
+        run: |
+          python3 -I resign/repack.py DoorApp.ipa work DoorApp-resigned.ipa
+          python3 -I resign/verify.py DoorApp.ipa DoorApp-resigned.ipa
+          shasum -a 256 DoorApp-resigned.ipa | tee DoorApp-resigned.ipa.sha256
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "${{ inputs.tag }}-resigned" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "${{ inputs.tag }}-resigned" DoorApp-resigned.ipa DoorApp-resigned.ipa.sha256 \
+            --target "$GITHUB_SHA" --title "${{ inputs.tag }}-resigned" \
+            --notes "Ad-hoc signed (LC_CODE_SIGNATURE only). Untested on device."
